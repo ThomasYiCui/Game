@@ -45,259 +45,140 @@ function dist(x, y, x2, y2) {
     return Math.sqrt(a * a + b * b);
 }
 
-function connection() {
-  this.weight = -1 + Math.random() * 2;
-  this.connectFrom = null;
-  this.connectTo = null;
+// Thanks to Neon for letting me use his code. His project is down below. Most of the work was done by him I just created vision, alignment, coherence, and seperation.
 
-  this.runConnection = function() {
-    this.connectTo.setValue(constrain(this.connectFrom.getValue() * this.weight + this.connectTo.getBias(), -10, 10));
-  }
+// greens have a bias towards the mouse. Reds don't have a bias
+// adjust parameters for different results or just reload the program
+var boidCount = 150; // how much boids there are
+var minSpeed = 3; // minimum speed of the boids. Here so they have to move.
+var maxSpeed = 6;// maximum speed of the boids.
+var vision = 100; // how much a boid can see. They will apply the rules to those they can see.
+var alignment = 50; // boids will try to go in the same directions as nearby boids. Adjust to control the strength
+var coherence = 50; // boids will try to steer toward the center of mass of the other boids.
+var seperation = 50; // boids will try to seperate themselves from other boids
+var seperationDist = 30; // how close will a boids have to be before they try to seperate themselves.
+
+
+angleMode = 'degrees';
+var Boid = function (x, y, color) {
+    this.pos = new PVector(x, y);
+    this.vel = new PVector(random(-30, 30), random(-30, 30));
+    this.acc = new PVector(0,0);
+    this.color = color;
+    this.maxSpeed = maxSpeed;
+    this.minSpeed = minSpeed;
+    this.maxForce = 0.1;
+    this.r = 4;
+    this.boidsNearMe = 0;
+    this.boidsAvgVel = new PVector(0, 0);
+    this.boidsAvgPos = new PVector(0, 0);
+    this.boidsClose = new PVector(0, 0);
 };
 
-function neuron() {
-  this.bias = -1 + Math.random() * 2;
-  this.value = 1;
-  this.connections = [];
-  
-  this.setBias = function(b) {
-    this.bias = b;
-  }
-  this.setValue = function(v) {
-    this.value = v;
-  }
-  this.getValue = function() {
-    return this.value;
-  }
-  this.getBias = function() {
-    return this.bias;
-  }
-  this.fireNeuron = function() {
-    for(let i in this.connections) {
-      this.connections[i].runConnection();
+Boid.prototype.update = function () {
+    this.vel.add(this.acc);
+    this.vel.limit(this.maxSpeed);
+    var speed = sqrt(this.vel.x * this.vel.x + this.vel.y * this.vel.y);
+    if(speed < this.minSpeed) {
+        this.vel.x*=3;
+        this.vel.y*=3;
     }
-  }
-}
-
-function network() {
-  this.network = [];
-  this.newNetwork = function(layers) {
-    for(let i in layers) {
-      let layer = [];
-      for(let j = 0; j < layers[i]; j++) {
-        let newNeuron = new neuron();
-        if(i > 0) {
-          for(let z = 0; z < layers[i - 1]; z++) {
-            let newConnection = new connection();
-            newConnection.connectFrom = this.network[i - 1][z];
-            newConnection.connectTo = newNeuron;
-            newNeuron.connections.push(newConnection);
-          }
-        }
-        layer.push(newNeuron);
-      }
-      this.network.push(layer);
+    this.pos.add(this.vel);
+    this.acc.mult(0);
+    if(this.pos.x <= 50) {
+        this.vel.x+=0.5;
     }
-  }
-  this.runNetwork = function() {
-    for(let i in this.network) {
-      for(let j in this.network[i]) {
-        this.network[i][j].fireNeuron();
-      }
+    if(this.pos.x >= 550) {
+        this.vel.x-=0.5;
     }
-  }
-  this.getOutput = function() {
-    return this.network[this.network.length - 1];
-  }
-  this.getInput = function() {
-    return this.network[0];
-  }
-  this.mutate = function(rate, weight) {
-    for(let i in this.network) {
-      for(let n in this.network[i]) {
-        if(Math.random() < rate) {
-        	/**
-        	this.network[i][n].bias += -weight + Math.random() * weight * 2;
-        	this.network[i][n].bias = constrain(this.network[i][n].bias, -10, 10)
-            */
-          this.network[i][n].bias+=-weight + Math.random() * weight * 2;
-        }
-        for(let c in this.network[i][n].connections) {
-          let connection = this.network[i][n].connections[c];
-          if(Math.random() < rate) {
-          	/**
-            connection.weight += -weight + Math.random() * weight * 2;
-            connection.weight = constrain(connection.weight, -10, 10)
-            */
-            connection.weight+=-weight + Math.random() * weight * 2;
-          }
-        }
-      }
+    if(this.pos.y <= 50) {
+        this.vel.y+=0.5;
     }
-  }
-  this.display = function() {
-    for(let i in this.network) {
-      for(let j in this.network[i]) {
-        ctx.fillStyle = "rgb(" + -this.network[i][j].bias * 100 + "," + this.network[i][j].bias * 100 + ", 0)";
-        ctx.font = "10px Arial";
-        ctx.fillText(Math.round(this.network[i][j].getValue() * 100)/100, 30 + i * 100, canvas.height/2 + j * 30 - this.network[i].length * 15 - 10);
-        ctx.beginPath();
-        ctx.arc(30 + i * 100, canvas.height/2 + j * 30 - this.network[i].length * 15, 5, 5, 0, 4 * Math.PI);
-        ctx.fill();
-        for(let c = 0; c < this.network[i][j].connections.length; c++) {
-          ctx.beginPath();
-          ctx.strokeStyle = "rgb(" + -this.network[i][j].connections[c].weight * 100 + "," + this.network[i][j].connections[c].weight * 100 + ", 0)";
-          ctx.moveTo(30 + i * 100 - 100, canvas.height/2 + c * 30 - this.network[i - 1].length * 15)
-          ctx.lineTo(30 + i * 100, canvas.height/2 + j * 30 - this.network[i].length * 15);
-          ctx.stroke();
-        }
-      }
+    if(this.pos.y >= 550) {
+        this.vel.y-=0.5;
     }
-  }
-}
-
-function npc(givenNetwork) {
-  //this.x = canvas.width/4 + Math.random() * canvas.width/2;
-  //this.y = canvas.height/4 + Math.random() * canvas.height/2;
-  this.x = canvas.width/2;
-  this.y = canvas.height/2;
-  this.memory1 = 0;
-  this.memory2 = 0;
-  this.memory3 = 0;
-  this.score = 0;
-  this.hp = 100;
-  this.network;
-  this.network = new network();
-   this.network.newNetwork([4, 4, 5, 5]);
-  if(givenNetwork) {
-  	for(let layer in this.network) {
-    	for(let node in this.network[layer]) {
-        	let curNode = this.network[layer][node];
-            let givenNode = givenNetwork.network[layer][node];
-            console.log(givenNode);
-           	curNode.bias = givenNode.bias;
-            for(let connection in curNode.connections) {
-            	let curConnection = curNode.connections[connection];
-                let givenConnection = givenNode.connections[connection]
-                curConnection.weighta = curConnection.weight;
-                console.log(givenConnection);
+    if(this.color === color(0, 255, 0)) {
+        this.vel.x+=lerp(this.vel.x, mouseX - this.pos.x, 0.01)/5;
+        this.vel.y+=lerp(this.vel.y, mouseY - this.pos.y, 0.01)/5;
+    }
+    if(this.boidsNearMe > 0) {
+        this.boidsAvgVel.x/=this.boidsNearMe;
+        this.boidsAvgVel.y/=this.boidsNearMe;
+        this.boidsAvgPos.x/=this.boidsNearMe;
+        this.boidsAvgPos.y/=this.boidsNearMe;
+        this.vel.x+=(this.boidsAvgVel.x - this.vel.x) * alignment/1000;
+        this.vel.y+=(this.boidsAvgVel.y - this.vel.y) * alignment/1000;
+        this.vel.x+=(this.boidsAvgPos.x - this.pos.x) * coherence/ 10000;
+        this.vel.y+=(this.boidsAvgPos.y - this.pos.y) * coherence/ 10000;
+    }
+    this.vel.x+=this.boidsClose.x * seperation/10000;
+    this.vel.y+=this.boidsClose.y * seperation/10000;
+    this.boidsAvgVel.x = 0;
+    this.boidsAvgVel.y = 0;
+    this.boidsAvgPos.x = 0;
+    this.boidsAvgPos.y = 0;
+    this.boidsClose.x = 0;
+    this.boidsClose.y = 0;
+    this.boidsNearMe = 0;
+};
+Boid.prototype.applyForce = function (f) {
+    this.acc.add(f);
+};
+Boid.prototype.display = function () {
+    var theta = 90 + this.vel.heading();
+    ctx.fillStyle = this.color;
+    ctx.beginShape();
+    ctx.moveTo(this.pos.x, this.pos.y + Math.sin(theta) * -this.r*2);
+    ctx.lineTo(this.pos.x + Math.cos(theta) * -this.r, this.pos.y + Math.sin(theta) * this.r*2);
+    ctx.lineTo(this.pos.x + Math.cos(theta) * this.r, this.pos.y + Math.sin(theta) * this.r*2);
+    ctx.closePath();
+    ctx.fill();
+};
+Boid.prototype.collide = function (target, align, cohese, seperate) {
+    var dis = dist(target.pos.x, target.pos.y, this.pos.x, this.pos.y);
+    if(dis < vision) {
+        if(dis < seperationDist) {
+            if(seperate) {
+                this.boidsClose.x+=this.pos.x - target.pos.x;
+                this.boidsClose.y+=this.pos.y - target.pos.y;
+            }
+        } else {
+            if(this.color === target.color) {
+                if(align) {
+                    this.boidsAvgVel.x+=target.vel.x;
+                    this.boidsAvgVel.y+=target.vel.y;
+                }
+                if(cohese) {
+                    this.boidsAvgPos.x+=target.pos.x;
+                    this.boidsAvgPos.y+=target.pos.y;
+                }
+                this.boidsNearMe+=1;
             }
         }
     }
-    this.network.mutate(1, 1);
-  }
-  if(givenNetwork) {
-    console.log("Before mutation: " + givenNetwork.network[0][0].bias);
-  }
-  this.draw = function() {
-    ctx.fillStyle = "red";
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, 10, 10, 0, 4 * Math.PI);
-    ctx.fill();
-  }
-  this.constrain = function() {
-    if(this.x < 0) {
-      this.x = 0;
-    }
-    if(this.x > canvas.width) {
-      this.x = canvas.width;
-    }
-    if(this.y < 0) {
-      this.y = 0;
-    }
-    if(this.y > canvas.height) {
-      this.y = canvas.height;
-    }
-  };
-  this.run = function() {
-    this.network.runNetwork();
-    this.constrain();
-    let output = this.network.getOutput();
-    if(output[0].getValue() > 1) {
-      this.x+=1;
-    } else if(output[0].getValue() < -1) {
-      this.x-=1;
-    }
-    if(output[1].getValue() > 1) {
-      this.y+=1;
-    } else if(output[1].getValue() < -1) {
-      this.y-=1;
-    }
-    this.memory1 = output[2].getValue();
-    this.memory2 = output[3].getValue();
-    this.memory3 = output[4].getValue();
-    let input = this.network.getInput();
-    input[0].setValue(this.x);
-    input[1].setValue(this.y);
-    input[2].setValue(targetX);
-    input[3].setValue(targetY);
-  }
-  this.rate = function() {
-    this.score+=dist(targetX, targetY, this.x, this.y);
-    this.score=-0.1;
-  }
-}
+};
 
-let ai = [];
-for(let i = 0; i < 200; i++) {
-  ai.push(new npc());
+var boidsGroup = [];
+for(var i = 0; i < boidCount; i++) {
+    if(i % 2 === 0) {
+        boidsGroup.push(new Boid(random(mouseX, mouseX), random(mouseY, mouseY), "rgb(0, 255, 0)"));
+    } else if(i % 2 === 1) {
+        boidsGroup.push(new Boid(random(0, 600), random(0, 600), "rgb(255, 0, 0)"));
+    }
 }
-let gen = 0;
-let genTime = 0;
-let highScore;
-let bestScore;
-let bestAi;
-for(let i in ai) {
-  if(!bestScore || bestScore < ai[i].score) {
-    bestAi = ai[i];
-    bestScore = ai[i].score;
-  }
-}
-
 setInterval(function() {
-  ctx.fillStyle = "rgb(200, 200, 200)";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = "rgb(120, 82, 26)";
-  ctx.fillRect(targetX, targetY, 5, 10);
-  for(let i in ai) {
-    ai[i].draw();
-    ai[i].run(false);
-    ai[i].rate();
-  }
-  //bestAi.network.display();
-  if(genTime % 10 < 5) {
-    ai[0].network.display();
-  } else {
-    ai[1].network.display();
-  }
-  if(!highScore || bestScore > highScore) {
-    highScore = bestScore;
-  }
-  if(genTime <= 0) {
-    for(let i in ai) {
-      if(!bestScore || bestScore < ai[i].score) {
-        bestAi = ai[i];
-        bestScore = ai[i].score;
-      }
+    ctx.fillStyle = "rgb(38, 38, 38)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    for(var i = 0; i < boidsGroup.length; i+=1) {
+        boidsGroup[i].display(color(0, 255, 0));
+        boidsGroup[i].update();
+        for(var j = 0; j < boidsGroup.length; j++) {
+            if(i !== j) {
+                boidsGroup[i].collide(boidsGroup[j], true, true, true);
+            }
+        }
+        
     }
-    gen+=1;
-    genTime = 300;
-    ai = [];
-    for(let i = 0; i < 200; i++) {
-      let newAi = new npc(bestAi.network);
-      /*
-      console.log("Pure")
-      console.log(newAi.network.network[1][0]);
-      console.log("Salt")
-      console.log(bestAi.network.network[1][0]);
-      */
-      ai.push(newAi);
-    }
-    //console.log(ai[1].network.network[0][0], ai[0].network.network[0][0]);
-    targetX = Math.random() * canvas.width;
-    targetY = Math.random() * canvas.height;
-  }
-  genTime-=1;
 }, 15)
 
 // THE TABLE
