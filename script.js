@@ -7,8 +7,6 @@ var mouseY = 0;
 var dragged = false;
 var clicked = false
 var keys = [];
-var targetX = Math.random() * canvas.width;
-var targetY = Math.random() * canvas.height;
 function keysPressed(e) {
   keys[e.keyCode] = true;
   e.preventDefault();
@@ -164,7 +162,7 @@ Boid.prototype.collide = function (target, align, cohese, seperate) {
 var boidsGroup = [];
 for(var i = 0; i < boidCount; i++) {
     if(i % 2 === 0) {
-        boidsGroup.push(new Boid(random(mouseX, mouseX), random(mouseY, mouseY), "rgb(0, 255, 0)"));
+        boidsGroup.push(new Boid(random(0, 600), random(0, 600), "rgb(0, 255, 0)"));
     } else if(i % 2 === 1) {
         boidsGroup.push(new Boid(random(0, 600), random(0, 600), "rgb(255, 0, 0)"));
     }
