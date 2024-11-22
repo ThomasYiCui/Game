@@ -38,6 +38,9 @@ window.addEventListener("keyup", keysReleased, false);
 function constrain(num, min, max) {
   return Math.max(Math.min(num, max), min)
 }
+function random(min, max) {
+  return Math.random(0, 1) * max + min
+}
 
 function dist(x, y, x2, y2) {
     var a = x - x2;
