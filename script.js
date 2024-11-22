@@ -1,3 +1,47 @@
+class PVector {
+  constructor(x, y) {
+    this.x = x || 0;
+    this.y = y || 0;
+  }
+
+  add(v) {
+    this.x += v.x;
+    this.y += v.y;
+  }
+
+  sub(v) {
+    this.x -= v.x;
+    this.y -= v.y;
+  }
+
+  mult(scalar) {
+    this.x *= scalar;
+    this.y *= scalar;
+  }
+
+  div(scalar) {
+    this.x /= scalar;
+    this.y /= scalar;
+  }
+
+  mag() {
+    return Math.sqrt(this.x * this.x + this.y * this.y);
+  }
+
+  normalize() {
+    let m = this.mag();
+    if (m !== 0) {
+      this.div(m);
+    }
+  }
+
+  static add(v1, v2) {
+    return new PVector(v1.x + v2.x, v1.y + v2.y);
+  }
+
+  // ... other methods like sub, mult, div, etc.
+}
+
 var canvas = document.getElementById("canvi");
 var ctx = canvas.getContext("2d");
 canvas.width = window.innerWidth;
